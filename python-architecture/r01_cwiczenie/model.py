@@ -1,6 +1,10 @@
 from dataclasses import dataclass
 from datetime import date
-from typing import Optional
+from typing import List, Optional
+
+
+class OutOfStock(Exception):
+    pass
 
 
 # value object
@@ -23,6 +27,29 @@ class Batch:
     def __repr__(self):
         return f"Batch {self.reference}"
 
+    def __eq__(self, other):
+        if not isinstance(other, Batch):
+            return False
+        return other.reference == self.reference
+
+    def __hash__(self):
+        return hash(self.reference)
+
+    def __gt__(self, other):
+        if self.eta is None:
+            return False
+        if other.eta is None:
+            return True
+        return self.eta > other.eta
+
+    def allocate(self, order_line: OrderLine):
+        if self.can_allocate(order_line):
+            self._allocations.add(order_line)
+
+    def deallocate(self, order_line: OrderLine):
+        if order_line in self._allocations:
+            self._allocations.remove(order_line)
+
     @property
     def allocated_quantity(self) -> int:
         return sum(line.qty for line in self._allocations)
@@ -33,3 +60,13 @@ class Batch:
 
     def can_allocate(self, line: OrderLine):
         return self.sku == line.sku and self.available_quantity >= line.qty
+
+def allocate(line: OrderLine, batches: List[Batch]) -> str:
+    try:
+        batch = next(
+            b for b in sorted(batches) if b.can_allocate(line)
+        )
+        batch.allocate(line)
+        return batch.reference
+    except StopIteration:
+        raise OutOfStock(f'Brak na stanie sku {line.sku}')
