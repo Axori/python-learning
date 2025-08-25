@@ -2,12 +2,13 @@ from sqlalchemy import (
     Table, MetaData, Column, Integer, String, Date,
     ForeignKey
 )
-from sqlalchemy.orm import mapper, relationship
+from sqlalchemy.orm import registry, relationship
 
 import model
 
-
-metadata = MetaData()
+# rejestr mapowań
+mapper_registry = registry()
+metadata = mapper_registry.metadata
 
 order_lines = Table(
     'order_lines', metadata,
@@ -35,11 +36,18 @@ allocations = Table(
 
 
 def start_mappers():
-    lines_mapper = mapper(model.OrderLine, order_lines)
-    mapper(model.Batch, batches, properties={
-        '_allocations': relationship(
-            lines_mapper,
-            secondary=allocations,
-            collection_class=set,
-        )
-    })
+    # mapowanie OrderLine
+    mapper_registry.map_imperatively(model.OrderLine, order_lines)
+
+    # mapowanie Batch z relacją
+    mapper_registry.map_imperatively(
+        model.Batch,
+        batches,
+        properties={
+            "_allocations": relationship(
+                model.OrderLine,
+                secondary=allocations,
+                collection_class=set,
+            )
+        },
+    )
