@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import model
-from model import OrderLine
+from model import OrderLine, Batch
 from repository import AbstractRepository
 
 class InvalidSku(Exception):
@@ -18,3 +18,7 @@ def allocate(line: OrderLine, repo: AbstractRepository, session) -> str:
     batchref = model.allocate(line, batches)
     session.commit()
     return batchref
+
+def add_batch(batch: Batch, repo: AbstractRepository, session) :
+    repo.add(batch)
+    session.commit()
